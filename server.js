@@ -151,96 +151,95 @@ app.post('/inrdeals/callback', async (req, res) => {
 });
 
 // INRDeals transactions report endpoint
-// Not working
-// app.get('/inrdeals/transactions', async (req, res) => {
-//     try {
-//         console.log('1. Request received with params:', req.query);
-//         const { token, startdate, enddate } = req.query;
+app.get('/inrdeals/transactions', async (req, res) => {
+    try {
+        console.log('1. Request received with params:', req.query);
+        const { token, startdate, enddate } = req.query;
         
-//         if (!token || !startdate || !enddate) {
-//             return res.status(400).json({ success: false, message: 'Missing required parameters' });
-//         }
+        if (!token || !startdate || !enddate) {
+            return res.status(400).json({ success: false, message: 'Missing required parameters' });
+        }
 
-//         console.log('2. About to call INRDeals API');
+        console.log('2. About to call INRDeals API');
         
-//         // Call the INRDeals API to get transactions report
-//         const response = await axios.get(
-//             "https://inrdeals.com/fetch/reports", {
-//                 params: {
-//                     token: token,
-//                     id: 'inrdeals',
-//                     startdate: startdate,
-//                     enddate: enddate
-//                 },
-//                 headers: {
-//                     'Content-Type': 'application/json',
-//                 }
-//             }
-//         );
+        // Call the INRDeals API to get transactions report
+        const response = await axios.get(
+            "https://inrdeals.com/fetch/reports", {
+                params: {
+                    token: token,
+                    id: process.env.INRDEALS_USERNAME,
+                    startdate: startdate,
+                    enddate: enddate
+                },
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            }
+        );
         
-//         const data = response.data;
-//         console.log('3. INRDeals API response received');
+        const data = response.data;
+        console.log('3. INRDeals API response received');
         
-//         if (!data || !data.result) {
-//             return res.status(400).json({ success: false, message: 'Invalid response from INRDeals API' });
-//         }
+        if (!data || !data.result) {
+            return res.status(400).json({ success: false, message: 'Invalid response from INRDeals API' });
+        }
         
-//         if (!admin.apps.length) {
-//             return res.status(500).json({ success: false, message: 'Firebase Admin not initialized' });
-//         }
+        if (!admin.apps.length) {
+            return res.status(500).json({ success: false, message: 'Firebase Admin not initialized' });
+        }
         
-//         console.log('4. Starting Firebase operations');
-//         // Process transactions and update Firebase
-//         const db = admin.firestore();
-//         const transactionsRef = db.collection('transactions');
+        console.log('4. Starting Firebase operations');
+        // Process transactions and update Firebase
+        const db = admin.firestore();
+        const transactionsRef = db.collection('transactions');
         
-//         // For each transaction in the report
-//         for (const transaction of data.result.data) {
-//             const { transaction_id, sale_amount, status, store_name, sale_date, sub_id1, user_commission } = transaction;
+        // For each transaction in the report
+        for (const transaction of data.result.data) {
+            const { transaction_id, sale_amount, status, store_name, sale_date, sub_id1, user_commission } = transaction;
             
-//             if (!sub_id1) continue; // Skip if no user ID
+            if (!sub_id1) continue; // Skip if no user ID
             
-//             // Find if transaction exists
-//             const querySnapshot = await transactionsRef
-//                 .where('subId', '==', sub_id1)
-//                 .where('transactionId', '==', transaction_id)
-//                 .get();
+            // Find if transaction exists
+            const querySnapshot = await transactionsRef
+                .where('subId', '==', sub_id1)
+                .where('transactionId', '==', transaction_id)
+                .get();
             
-//             if (querySnapshot.empty) {
-//                 // Create new transaction
-//                 await transactionsRef.add({
-//                     userId: sub_id1,
-//                     storeName: store_name,
-//                     saleAmount: parseFloat(sale_amount),
-//                     commission: parseFloat(user_commission),
-//                     status: status,
-//                     transactionId: transaction_id,
-//                     saleDate: new Date(sale_date),
-//                     lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-//                 });
-//             } else {
-//                 // Update existing transaction
-//                 querySnapshot.forEach(async (doc) => {
-//                     await doc.ref.update({
-//                         saleAmount: parseFloat(sale_amount),
-//                         commission: parseFloat(user_commission),
-//                         status: status,
-//                         lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-//                     });
-//                 });
-//             }
-//         }
+            if (querySnapshot.empty) {
+                // Create new transaction
+                await transactionsRef.add({
+                    userId: sub_id1,
+                    storeName: store_name,
+                    saleAmount: parseFloat(sale_amount),
+                    commission: parseFloat(user_commission),
+                    status: status,
+                    transactionId: transaction_id,
+                    saleDate: new Date(sale_date),
+                    lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+                });
+            } else {
+                // Update existing transaction
+                querySnapshot.forEach(async (doc) => {
+                    await doc.ref.update({
+                        saleAmount: parseFloat(sale_amount),
+                        commission: parseFloat(user_commission),
+                        status: status,
+                        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+                    });
+                });
+            }
+        }
         
-//         return res.status(200).json({ 
-//             success: true, 
-//             message: 'Transactions processed',
-//             data: data.result
-//         });
-//     } catch (error) {
-//         console.error('Error processing transactions report:', error);
-//         return res.status(500).json({ success: false, message: 'Internal server error' });
-//     }
-// });
+        return res.status(200).json({ 
+            success: true, 
+            message: 'Transactions processed',
+            data: data.result
+        });
+    } catch (error) {
+        console.error('Error processing transactions report:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
 
 // Use transaction routes
 app.use('/api', transactionRoutes);
